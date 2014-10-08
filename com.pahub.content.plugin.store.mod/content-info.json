@@ -1,0 +1,38 @@
+{
+    "content_id": "com.pahub.content.store.mod.client",
+    "store_id": "com.pahub.content.store.plugin",
+    "display_name": "Mod Store",
+    "description": "(Store) Manage installed Client Mods",
+    "author": "Raevn",
+    "version": "0.0.0",
+    "date": "2014/08/28",
+    "loc_data": [
+        {
+            "locale_id": "en-us",
+            "data": {
+                "Content_Hub_Plugin": "Store - Mods",
+                "core-content_description": ""
+            }
+        }
+    ],
+    "resources": [
+        "com.pahub.content.plugin.store.mod.js"
+    ],
+    "load_func": "load_mod_store_plugin",
+    "unload_func": "unload_mod_store_plugin",
+    "content_enabled_func": "mod_store_content_enabled",
+    "content_disabled_func": "mod_store_content_disabled",
+    "custom_install_content_func": "mod_store_install_content",
+    "find_local_content_func": "mod_store_find_local_content",
+    "find_online_content_func": "mod_store_find_online_content",
+    "custom_write_content_func": "mod_store_write_content",
+    "local_content_path": "mods",
+    "online_content_path": "https://pamm-mereth.rhcloud.com/api/mod",
+    "content_name": "Client Mod",
+    "enabled": true,
+    "content_colour": [
+        140,
+        0,
+        255
+    ]
+}
