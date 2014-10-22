@@ -2,34 +2,44 @@ function load_mod_store_plugin(data) {
 	setConstant("PAHUB_CLIENT_MODS_DIR", path.join(constant.PA_DATA_DIR, "mods"));
 	setConstant("PAHUB_SERVER_MODS_DIR", path.join(constant.PA_DATA_DIR, "server_mods"));
 			
-	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm", "ui", "mods")) == false) {
-		mkdirp.sync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm", "ui", "mods"));
-	}
+	//Windows PAMM auto-created mod
 	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "rPAMM")) == true) {
 		deleteFolderRecursive(path.join(constant.PAHUB_CLIENT_MODS_DIR, "rPAMM"));
 	}
-	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm", "modinfo.json")) == false) {
+	//Non-Windows PAMM auto-created mod
+	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "PAMM")) == true) {
+		deleteFolderRecursive(path.join(constant.PAHUB_CLIENT_MODS_DIR, "PAMM"));
+	}
+	//this can be removed down the track, it was only used in one release
+	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm")) == true) {
+		deleteFolderRecursive(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm"));
+	}
+	
+	
+	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub.mods.client", "ui", "mods")) == false) {
+		mkdirp.sync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub.mods.client", "ui", "mods"));
+	}
+	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub.mods.client", "modinfo.json")) == false) {
 		var modinfoJSON = {
 			"context": "client",
-			"identifier": "com.pa.raevn.rpamm",
+			"identifier": "com.pa.pahub.mods.client",
 			"display_name": "PA Mod Manager",
 			"description": " ",
-			"author": "pamm-atom",
+			"author": "pahub",
 			"version": "1.0.0",
 			"signature": "not yet implemented",
 			"priority": 0,
 			"enabled": true,
-			"id": "rPAMM",
-			"content_id": "com.pa.raevn.rpamm",
-			"store_id": "com.pahub.content.store.mod.client"
+			"content_id": "com.pa.pahub.mods.client",
+			"store_id": "com.pahub.content.plugin.store.mod.client"
 		};
-		writeJSONtoFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm", "modinfo.json"), modinfoJSON);
+		writeJSONtoFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub.mods.client", "modinfo.json"), modinfoJSON);
 	}
 		
 	pahub.api.content.addContentStore(data.content_id, data.display_name, data);
 	
 	var data2 = $.extend({}, data);
-	data2.content_id = "com.pahub.content.store.mod.server";
+	data2.content_id = "com.pahub.content.plugin.store.mod.server";
 	data2.display_name = "Server Mod Store";
 	data2.local_content_path = "server_mods",
 	data2.content_name = "Server Mod",
@@ -42,8 +52,8 @@ function load_mod_store_plugin(data) {
 		online_mod_category_names: ko.observableArray()
 	}
 	
-	var client_store = model.content.content_stores()[getMapItemIndex(model.content.content_stores(), "store_id", "com.pahub.content.store.mod.client")];
-	var server_store = model.content.content_stores()[getMapItemIndex(model.content.content_stores(), "store_id", "com.pahub.content.store.mod.server")];
+	var client_store = model.content.content_stores()[getMapItemIndex(model.content.content_stores(), "store_id", "com.pahub.content.plugin.store.mod.client")];
+	var server_store = model.content.content_stores()[getMapItemIndex(model.content.content_stores(), "store_id", "com.pahub.content.plugin.store.mod.server")];
 	
 	var change_func = function(changes, store) {
 		var local_categories = model.content.mods.mod_category_names;
@@ -93,12 +103,15 @@ function load_mod_store_plugin(data) {
 }
 
 function unload_mod_store_plugin(data) {
-	//pahub.api.content.removeFilterOption(true, "Category", "data-contains", "category");
-	//pahub.api.content.removeFilterOption(false, "Category", "data-contains", "category");
+	pahub.api.content.removeContentStore("com.pahub.content.plugin.store.mod.server");
+	pahub.api.content.removeFilterOption(true, "Category", "data-contains", "category");
+	pahub.api.content.removeFilterOption(false, "Category", "data-contains", "category");
 }
 
 function store_mod_enabled(content) {}
-function store_mod_disabled(content) {}
+
+function store_mod_disabled(content) {
+}
 
 function mod_store_write_content(content_item) {
 	var data = $.extend({}, content_item.data);
@@ -138,10 +151,10 @@ function mod_store_write_mod_files(store_id) {
 		
 
 	var ui_mods_listJSON = "var global_mod_list = " + JSON.stringify(global_mod_list, null, 4) + ";\n" + "var scene_mod_list = " + JSON.stringify(scene_mod_list, null, 4) + ";\n";
-	if (store_id == "com.pahub.content.store.mod.client") {
+	if (store_id == "com.pahub.content.plugin.store.mod.client") {
 		writeJSONtoFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "mods.json"), modsJSON);
-		writeToFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm", "ui", "mods", "ui_mod_list.js"), ui_mods_listJSON);
-	} else if (store_id == "com.pahub.content.store.mod.server") {
+		writeToFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub", "ui", "mods", "ui_mod_list.js"), ui_mods_listJSON);
+	} else if (store_id == "com.pahub.content.plugin.store.mod.server") {
 		writeJSONtoFile(path.join(constant.PAHUB_SERVER_MODS_DIR, "mods.json"), modsJSON);
 	}
 }
@@ -163,18 +176,18 @@ function mod_store_find_online_content(store_id, catalogJSON) {
 		catalogJSON[i].store_id = store_id;
 		catalogJSON[i].store = store;
 		
-		if (store_id == "com.pahub.content.store.mod.client" && catalogJSON[i].context == "client") {
+		if (store_id == "com.pahub.content.plugin.store.mod.client" && catalogJSON[i].context == "client") {
 			pahub.api.log.addLogMessage("verb", "Found online " + store.data.content_name + ": '" + catalogJSON[i].content_id + "'");
 		}
-		if (store_id == "com.pahub.content.store.mod.server" && catalogJSON[i].context == "server") {
+		if (store_id == "com.pahub.content.plugin.store.mod.server" && catalogJSON[i].context == "server") {
 			pahub.api.log.addLogMessage("verb", "Found online " + store.data.content_name + ": '" + catalogJSON[i].content_id + "'");
 		}
 	}
 	for (var i = 0; i < catalogJSON.length; i++) {
-		if (store_id == "com.pahub.content.store.mod.client" && catalogJSON[i].context == "client") {
+		if (store_id == "com.pahub.content.plugin.store.mod.client" && catalogJSON[i].context == "client") {
 			pahub.api.content.addContentItem(false, store_id, catalogJSON[i].content_id, catalogJSON[i].display_name, "", catalogJSON[i]);
 		}
-		if (store_id == "com.pahub.content.store.mod.server" && catalogJSON[i].context == "server") {
+		if (store_id == "com.pahub.content.plugin.store.mod.server" && catalogJSON[i].context == "server") {
 			pahub.api.content.addContentItem(false, store_id, catalogJSON[i].content_id, catalogJSON[i].display_name, "", catalogJSON[i]);
 		}
 	}
@@ -190,7 +203,19 @@ function mod_store_find_local_content(store_id) {
 			contentInfo.content_id = contentInfo.identifier;
 			contentInfo.store_id = store_id;
 			
-			if (store_id == "com.pahub.content.store.mod.client" && contentInfo.context == "client" || store_id == "com.pahub.content.store.mod.server" && contentInfo.context == "server") {
+			if (contentInfo.hasOwnProperty("dependencies") == true && contentInfo.hasOwnProperty("required") == false) {
+				contentInfo["required"] = {};
+				contentInfo.dependencies.forEach(function(item) {
+					contentInfo.required[item] = "*";
+				});
+			} else if (contentInfo.hasOwnProperty("required") == true) {
+				contentInfo["dependencies"] = [];
+				for (var key in contentInfo.required) {
+					contentInfo.dependencies.push(key);
+				}
+			}
+			
+			if (store_id == "com.pahub.content.plugin.store.mod.client" && contentInfo.context == "client" || store_id == "com.pahub.content.plugin.store.mod.server" && contentInfo.context == "server") {
 				content_queue.push({
 					content_id: contentInfo.content_id,
 					store_id: store_id,

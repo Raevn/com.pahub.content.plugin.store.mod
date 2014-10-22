@@ -1,11 +1,11 @@
 {
-    "content_id": "com.pahub.content.store.mod.client",
-    "store_id": "com.pahub.content.store.plugin",
+    "content_id": "com.pahub.content.plugin.store.mod.client",
+    "store_id": "com.pahub.content.plugin.store.plugin",
     "display_name": "Mod Store",
     "description": "(Store) Manage installed Client Mods",
     "author": "Raevn",
-    "version": "0.0.0",
-    "date": "2014/08/28",
+    "version": "0.0.1",
+    "date": "2014/10/23",
     "loc_data": [
         {
             "locale_id": "en-us",
