@@ -64,15 +64,21 @@ function load_mod_store_plugin(data) {
 				if(change.value.data.hasOwnProperty("category") == true) {
 					for (var i = 0; i < change.value.data.category.length; i++) {
 						if (change.value.local == true) {
-							if (local_categories.indexOf(change.value.data.category[i]) == -1) {
-								local_categories.push(change.value.data.category[i]);
+							if (local_categories.indexOf(change.value.data.category[i].toLowerCase()) == -1) {
+								local_categories.push(change.value.data.category[i].toLowerCase());
 							}
 						} else {
-							if (online_categories.indexOf(change.value.data.category[i]) == -1) {
-								online_categories.push(change.value.data.category[i]);
+							if (online_categories.indexOf(change.value.data.category[i].toLowerCase()) == -1) {
+								online_categories.push(change.value.data.category[i].toLowerCase());
 							}
 						}
 					}
+					local_categories.sort(function(left, right) {
+						return left == right ? 0 : (left < right ? -1 : 1);
+					});
+					online_categories.sort(function(left, right) {
+						return left == right ? 0 : (left < right ? -1 : 1);
+					});
 				}
 			}
 			if (change.status == "deleted") {
@@ -81,8 +87,8 @@ function load_mod_store_plugin(data) {
 				for (var i = 0; i < store.online_content_items().length; i++) {
 					if(store.online_content_items()[i].data.hasOwnProperty("category") == true) {
 						for (var j = 0; j < store.online_content_items()[i].data.category.length; j++) {
-							if (categories.indexOf(store.online_content_items()[i].data.category[j]) == -1) {
-								categories.push(store.online_content_items()[i].data.category[j]);
+							if (categories.indexOf(store.online_content_items()[i].data.category[j].toLowerCase()) == -1) {
+								categories.push(store.online_content_items()[i].data.category[j].toLowerCase());
 							}
 						}
 					}
@@ -129,6 +135,12 @@ function mod_store_write_mod_files(store_id) {
 	var store = pahub.api.content.getContentStore(store_id);
 	var local_items = store.local_content_items();
 	
+	local_items.sort(function(left, right) {
+		var left_priority = left.data.priority || 100;
+		var right_priority = right.data.priority || 100;
+		return left_priority == right_priority ? 0 : (left_priority < right_priority ? -1 : 1);
+	});
+	
 	local_items.forEach(function(item) {
 		if (item.data.enabled() == true) {
 			modsJSON.mount_order.push(item.content_id);
@@ -153,7 +165,7 @@ function mod_store_write_mod_files(store_id) {
 	var ui_mods_listJSON = "var global_mod_list = " + JSON.stringify(global_mod_list, null, 4) + ";\n" + "var scene_mod_list = " + JSON.stringify(scene_mod_list, null, 4) + ";\n";
 	if (store_id == "com.pahub.content.plugin.store.mod.client") {
 		writeJSONtoFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "mods.json"), modsJSON);
-		writeToFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub", "ui", "mods", "ui_mod_list.js"), ui_mods_listJSON);
+		writeToFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub.mods.client", "ui", "mods", "ui_mod_list.js"), ui_mods_listJSON);
 	} else if (store_id == "com.pahub.content.plugin.store.mod.server") {
 		writeJSONtoFile(path.join(constant.PAHUB_SERVER_MODS_DIR, "mods.json"), modsJSON);
 	}
@@ -175,6 +187,18 @@ function mod_store_find_online_content(store_id, catalogJSON) {
 		catalogJSON[i].content_id = catalogJSON[i].identifier;
 		catalogJSON[i].store_id = store_id;
 		catalogJSON[i].store = store;
+		
+		if (catalogJSON[i].hasOwnProperty("dependencies") == true && catalogJSON[i].hasOwnProperty("required") == false) {
+			catalogJSON[i]["required"] = {};
+			catalogJSON[i].dependencies.forEach(function(item) {
+				catalogJSON[i].required[item] = "*";
+			});
+		} else if (catalogJSON[i].hasOwnProperty("required") == true) {
+			catalogJSON[i]["dependencies"] = [];
+			for (var key in catalogJSON[i].required) {
+				catalogJSON[i].dependencies.push(key);
+			}
+		}
 		
 		if (store_id == "com.pahub.content.plugin.store.mod.client" && catalogJSON[i].context == "client") {
 			pahub.api.log.addLogMessage("verb", "Found online " + store.data.content_name + ": '" + catalogJSON[i].content_id + "'");
