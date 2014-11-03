@@ -215,39 +215,80 @@ function mod_store_find_online_content(store_id, catalogJSON) {
 			pahub.api.content.addContentItem(false, store_id, catalogJSON[i].content_id, catalogJSON[i].display_name, "", catalogJSON[i]);
 		}
 	}
+	pahub.api.resource.loadResource("http://pamm-mereth.rhcloud.com/api/usage", "save", {
+		saveas: "com.pahub.content.plugin.store.mod.usage.json", 
+		name: "Mod download information",
+		mode: "async",
+		success: function(data) {
+			var jsonData = readJSONfromFile(path.join(constant.PAHUB_CACHE_DIR, "com.pahub.content.plugin.store.mod.usage.json"));
+			if (jsonData != false) {
+				for(var i = 0; i < jsonData.length; i++) {
+					var content = pahub.api.content.getContentItem(false, jsonData[i].identifier);
+					if (content) {
+						content.downloads(jsonData[i].total);
+					} else {
+						//
+					}
+				}
+			}
+			pahub.api.content.applySort(false, pahub.api.content.getSort(false));
+		}
+	});
 }
 
 function mod_store_find_local_content(store_id) {
+
 	var store = pahub.api.content.getContentStore(store_id);
 	var content_queue = [];
-	var folders = getSubFolders(path.join(constant.PA_DATA_DIR, store.data.local_content_path));
-	for (var i = 0; i < folders.length; i++) {
-		if (fs.existsSync(path.join(constant.PA_DATA_DIR, store.data.local_content_path, folders[i], "modinfo.json")) == true) {
-			var contentInfo = readJSONfromFile(path.join(constant.PA_DATA_DIR, store.data.local_content_path, folders[i], "modinfo.json"));
-			contentInfo.content_id = contentInfo.identifier;
-			contentInfo.store_id = store_id;
-			
-			if (contentInfo.hasOwnProperty("dependencies") == true && contentInfo.hasOwnProperty("required") == false) {
-				contentInfo["required"] = {};
-				contentInfo.dependencies.forEach(function(item) {
-					contentInfo.required[item] = "*";
-				});
-			} else if (contentInfo.hasOwnProperty("required") == true) {
-				contentInfo["dependencies"] = [];
-				for (var key in contentInfo.required) {
-					contentInfo.dependencies.push(key);
+	
+	var find_mods_in_folders = function(baseFolder, folders) {
+		for (var i = 0; i < folders.length; i++) {
+			if (fs.existsSync(path.join(baseFolder, folders[i], "modinfo.json")) == true) {
+				var contentInfo = readJSONfromFile(path.join(baseFolder, folders[i], "modinfo.json"));
+				contentInfo.content_id = contentInfo.identifier;
+				contentInfo.store_id = store_id;
+				
+				if (contentInfo.hasOwnProperty("dependencies") == true && contentInfo.hasOwnProperty("required") == false) {
+					contentInfo["required"] = {};
+					contentInfo.dependencies.forEach(function(item) {
+						contentInfo.required[item] = "*";
+					});
+				} else if (contentInfo.hasOwnProperty("required") == true) {
+					contentInfo["dependencies"] = [];
+					for (var key in contentInfo.required) {
+						contentInfo.dependencies.push(key);
+					}
 				}
-			}
-			
-			if (store_id == "com.pahub.content.plugin.store.mod.client" && contentInfo.context == "client" || store_id == "com.pahub.content.plugin.store.mod.server" && contentInfo.context == "server") {
-				content_queue.push({
-					content_id: contentInfo.content_id,
-					store_id: store_id,
-					url: path.join(constant.PA_DATA_DIR, store.data.local_content_path, folders[i], "modinfo.json"),
-					data: contentInfo
-				});
+				
+				if (store_id == "com.pahub.content.plugin.store.mod.client" && contentInfo.context == "client" || store_id == "com.pahub.content.plugin.store.mod.server" && contentInfo.context == "server") {
+					content_queue.push({
+						content_id: contentInfo.content_id,
+						store_id: store_id,
+						url: path.join(baseFolder, folders[i], "modinfo.json"),
+						data: contentInfo
+					});
+				}
 			}
 		}
 	}
+	
+	var folders = getSubFolders(path.join(constant.PA_DATA_DIR, store.data.local_content_path));
+	find_mods_in_folders(path.join(constant.PA_DATA_DIR, store.data.local_content_path), folders);
+	
+	//TODO: These aren't updated when changing between PTE & Stable
+	var stockmodsFolder = "client";
+	if (store_id == "com.pahub.content.plugin.store.mod.server") {
+		stockmodsFolder = "server";
+	}
+	if (model.stream() == "PTE") {
+		folders = getSubFolders(path.join(constant.PA_PTE_DIR, "media", "stockmods", stockmodsFolder + "/"));
+		find_mods_in_folders(path.join(constant.PA_PTE_DIR, "media", "stockmods", stockmodsFolder + "/"), folders);
+	}
+	if (model.stream() == "STABLE" || model.stream() == "STEAM" ) {
+		folders = getSubFolders(path.join(constant.PA_STABLE_DIR, "media", "stockmods", stockmodsFolder + "/"));
+		find_mods_in_folders(path.join(constant.PA_STABLE_DIR, "media", "stockmods", stockmodsFolder + "/"), folders);
+	}
+	
+	
 	return content_queue;
 }
