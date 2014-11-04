@@ -35,7 +35,9 @@ function load_mod_store_plugin(data) {
 		};
 		writeJSONtoFile(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub.mods.client", "modinfo.json"), modinfoJSON);
 	}
-		
+	
+	data.content_id = "com.pahub.content.plugin.store.mod.client";
+	data.display_name = "Client Mod Store";
 	pahub.api.content.addContentStore(data.content_id, data.display_name, data);
 	
 	var data2 = $.extend({}, data);

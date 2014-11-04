@@ -1,10 +1,10 @@
 {
-    "content_id": "com.pahub.content.plugin.store.mod.client",
+    "content_id": "com.pahub.content.plugin.store.mod",
     "store_id": "com.pahub.content.plugin.store.plugin",
     "display_name": "Mod Store",
-    "description": "(Store) Manage installed Client Mods",
+    "description": "(Store) Manage installed Mods",
     "author": "Raevn",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "date": "2014/11/04",
     "resources": [
         "com.pahub.content.plugin.store.mod.js"
