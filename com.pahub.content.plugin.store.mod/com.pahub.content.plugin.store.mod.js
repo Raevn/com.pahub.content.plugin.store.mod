@@ -282,11 +282,11 @@ function mod_store_find_local_content(store_id) {
 	if (store_id == "com.pahub.content.plugin.store.mod.server") {
 		stockmodsFolder = "server";
 	}
-	if (model.stream() == "PTE") {
+	if (model.stream() == "PTE" && constant.hasOwnProperty("PA_PTE_DIR") == true) {
 		folders = getSubFolders(path.join(constant.PA_PTE_DIR, "media", "stockmods", stockmodsFolder + "/"));
 		find_mods_in_folders(path.join(constant.PA_PTE_DIR, "media", "stockmods", stockmodsFolder + "/"), folders);
 	}
-	if (model.stream() == "STABLE" || model.stream() == "STEAM" ) {
+	if ((model.stream() == "STABLE" || model.stream() == "STEAM") && constant.hasOwnProperty("PA_STABLE_DIR") == true) {
 		folders = getSubFolders(path.join(constant.PA_STABLE_DIR, "media", "stockmods", stockmodsFolder + "/"));
 		find_mods_in_folders(path.join(constant.PA_STABLE_DIR, "media", "stockmods", stockmodsFolder + "/"), folders);
 	}
