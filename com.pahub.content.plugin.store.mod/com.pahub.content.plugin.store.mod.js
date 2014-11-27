@@ -1,7 +1,8 @@
 function load_mod_store_plugin(data) {
 	setConstant("PAHUB_CLIENT_MODS_DIR", path.join(constant.PA_DATA_DIR, "mods"));
 	setConstant("PAHUB_SERVER_MODS_DIR", path.join(constant.PA_DATA_DIR, "server_mods"));
-			
+	setConstant("MOD_USAGE_URL", "http://pamm-mereth.rhcloud.com/api/usage");	
+
 	//Windows PAMM auto-created mod
 	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "rPAMM")) == true) {
 		deleteFolderRecursive(path.join(constant.PAHUB_CLIENT_MODS_DIR, "rPAMM"));
@@ -10,11 +11,6 @@ function load_mod_store_plugin(data) {
 	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "PAMM")) == true) {
 		deleteFolderRecursive(path.join(constant.PAHUB_CLIENT_MODS_DIR, "PAMM"));
 	}
-	//this can be removed down the track, it was only used in one release
-	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm")) == true) {
-		deleteFolderRecursive(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.raevn.rpamm"));
-	}
-	
 	
 	if (fs.existsSync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub.mods.client", "ui", "mods")) == false) {
 		mkdirp.sync(path.join(constant.PAHUB_CLIENT_MODS_DIR, "com.pa.pahub.mods.client", "ui", "mods"));
@@ -129,10 +125,10 @@ function mod_store_write_content(content_item) {
 }
 
 function mod_store_write_mod_files(store_id) {
-	modsJSON = { "mount_order": [] };
-	global_mod_list = [];
-	scene_mod_list = {};
-	//todo: prioritise/ ordering of mods
+	var legacy_scenes = ["armory", "building_planets", "connect_to_game", "game_over", "icon_atlas", "live_game", "live_game_econ", "live_game_hover", "load_planet", "lobby", "matchmaking", "new_game", "replay_browser", "server_browser", "settings", "social", "special_icon_atlas", "start", "system_editor", "transit"]; // deprecated
+	var modsJSON = { "mount_order": [] };
+	var global_mod_list = [];
+	var scene_mod_list = {};
 	
 	var store = pahub.api.content.getContentStore(store_id);
 	var local_items = store.local_content_items();
@@ -159,7 +155,15 @@ function mod_store_write_mod_files(store_id) {
 						}
 					}
 				}
-			}
+			}			
+			legacy_scenes.forEach(function(legacy_scene) {
+				if(item.data[legacy_scene]) {
+					if(!scene_mod_list[legacy_scene]) {
+						scene_mod_list[legacy_scene] = [];
+					}
+					scene_mod_list[legacy_scene] = scene_mod_list[legacy_scene].concat(item.data[legacy_scene]);
+				}
+			});
 		}
 	});
 		
@@ -173,13 +177,16 @@ function mod_store_write_mod_files(store_id) {
 	}
 }
 
-function mod_store_install_content(content_id) {
-	var content = pahub.api.content.getContentItem(false, content_id);
+function mod_store_install_content(content_id, update) {
+	var online_content = pahub.api.content.getContentItem(false, content_id);
 	extractZip(path.join(constant.PAHUB_CACHE_DIR, content_id + ".zip"), 
 		content_id, 
-		path.join(constant.PA_DATA_DIR, content.store.data.local_content_path), 
+		path.join(constant.PA_DATA_DIR, online_content.store.data.local_content_path), 
 		getZippedFilePath(path.join(constant.PAHUB_CACHE_DIR, content_id + ".zip"), "modinfo.json")
 	);
+
+	//Increment download count
+	$.post(constant.MOD_USAGE_URL, { identifier: content_id, action: (update ? "update" : "install") });
 }
 
 function mod_store_find_online_content(store_id, catalogJSON) {
@@ -219,7 +226,7 @@ function mod_store_find_online_content(store_id, catalogJSON) {
 	}
 	pahub.api.resource.loadResource("http://pamm-mereth.rhcloud.com/api/usage", "save", {
 		saveas: "com.pahub.content.plugin.store.mod.usage.json", 
-		name: "Mod download information",
+		name: store_id == "com.pahub.content.plugin.store.mod.client" ? "Client Mod download information" : "Server Mod download information",
 		mode: "async",
 		success: function(data) {
 			var jsonData = readJSONfromFile(path.join(constant.PAHUB_CACHE_DIR, "com.pahub.content.plugin.store.mod.usage.json"));
@@ -239,9 +246,10 @@ function mod_store_find_online_content(store_id, catalogJSON) {
 }
 
 function mod_store_find_local_content(store_id) {
-
 	var store = pahub.api.content.getContentStore(store_id);
 	var content_queue = [];
+
+	var modsListJSON = readJSONfromFile(path.join(constant.PA_DATA_DIR, store.data.local_content_path, "mods.json"));
 	
 	var find_mods_in_folders = function(baseFolder, folders) {
 		for (var i = 0; i < folders.length; i++) {
@@ -249,6 +257,8 @@ function mod_store_find_local_content(store_id) {
 				var contentInfo = readJSONfromFile(path.join(baseFolder, folders[i], "modinfo.json"));
 				contentInfo.content_id = contentInfo.identifier;
 				contentInfo.store_id = store_id;
+				
+				contentInfo.enabled = modsListJSON.mount_order.indexOf(contentInfo.content_id) > -1
 				
 				if (contentInfo.hasOwnProperty("dependencies") == true && contentInfo.hasOwnProperty("required") == false) {
 					contentInfo["required"] = {};
@@ -282,15 +292,9 @@ function mod_store_find_local_content(store_id) {
 	if (store_id == "com.pahub.content.plugin.store.mod.server") {
 		stockmodsFolder = "server";
 	}
-	if (model.stream() == "PTE" && constant.hasOwnProperty("PA_PTE_DIR") == true) {
-		folders = getSubFolders(path.join(constant.PA_PTE_DIR, "media", "stockmods", stockmodsFolder + "/"));
-		find_mods_in_folders(path.join(constant.PA_PTE_DIR, "media", "stockmods", stockmodsFolder + "/"), folders);
-	}
-	if ((model.stream() == "STABLE" || model.stream() == "STEAM") && constant.hasOwnProperty("PA_STABLE_DIR") == true) {
-		folders = getSubFolders(path.join(constant.PA_STABLE_DIR, "media", "stockmods", stockmodsFolder + "/"));
-		find_mods_in_folders(path.join(constant.PA_STABLE_DIR, "media", "stockmods", stockmodsFolder + "/"), folders);
-	}
 	
+	folders = getSubFolders(path.join(streams[model.stream()].stockmods, stockmodsFolder));
+	find_mods_in_folders(path.join(streams[model.stream()].stockmods, stockmodsFolder), folders);
 	
 	return content_queue;
 }
