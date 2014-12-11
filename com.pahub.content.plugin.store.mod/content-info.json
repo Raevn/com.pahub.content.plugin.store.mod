@@ -4,8 +4,8 @@
     "display_name": "Mod Store",
     "description": "(Store) Manage installed Mods",
     "author": "Raevn",
-    "version": "0.3.0",
-    "date": "2014/11/27",
+    "version": "0.3.1",
+    "date": "2014/12/11",
     "resources": [
         "com.pahub.content.plugin.store.mod.js"
     ],
@@ -27,7 +27,7 @@
         255
     ],
     "required": {
-        "com.pahub": ">=0.2.2",
-        "com.pahub.content.plugin.contenthub": ">=0.4.1"
+        "com.pahub": ">=0.4.0",
+        "com.pahub.content.plugin.contenthub": ">=0.6.0"
     }
 }

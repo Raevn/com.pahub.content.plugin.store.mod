@@ -187,6 +187,17 @@ function mod_store_install_content(content_id, update) {
 
 	//Increment download count
 	$.post(constant.MOD_USAGE_URL, { identifier: content_id, action: (update ? "update" : "install") });
+	
+	var modsPath = path.join(constant.PAHUB_CLIENT_MODS_DIR, "mods.json");
+	if (online_content.store.store_id == "com.pahub.content.plugin.store.mod.server") {
+		modsPath = path.join(constant.PAHUB_SERVER_MODS_DIR, "mods.json");
+	}
+	
+	var modsJSON = readJSONfromFile(modsPath);
+	if (modsJSON.hasOwnProperty("mount_order") == true) {
+		modsJSON.mount_order.push(content_id);
+		writeJSONtoFile(modsPath, modsJSON);
+	}
 }
 
 function mod_store_find_online_content(store_id, catalogJSON) {
@@ -207,13 +218,6 @@ function mod_store_find_online_content(store_id, catalogJSON) {
 			for (var key in catalogJSON[i].required) {
 				catalogJSON[i].dependencies.push(key);
 			}
-		}
-		
-		if (store_id == "com.pahub.content.plugin.store.mod.client" && catalogJSON[i].context == "client") {
-			pahub.api.log.addLogMessage("verb", "Found online " + store.data.content_name + ": '" + catalogJSON[i].content_id + "'");
-		}
-		if (store_id == "com.pahub.content.plugin.store.mod.server" && catalogJSON[i].context == "server") {
-			pahub.api.log.addLogMessage("verb", "Found online " + store.data.content_name + ": '" + catalogJSON[i].content_id + "'");
 		}
 	}
 	for (var i = 0; i < catalogJSON.length; i++) {
